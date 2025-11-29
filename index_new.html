@@ -407,6 +407,83 @@
     </div>
   </div>
 
+  <!-- 添加书签对话框 -->
+  <div x-show="showAddBookmarkDialog" 
+       @click.self="showAddBookmarkDialog = false"
+       class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+       x-transition>
+    <div class="glass rounded-2xl p-8 max-w-md w-full shadow-2xl"
+         @click.stop
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100">
+      
+      <!-- 标题 -->
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center">
+          <i class="fa fa-plus text-3xl text-primary"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-shadow mb-2">添加书签</h2>
+        <p class="text-gray-300 text-sm text-bg">添加到 "<span x-text="newBookmarkCategory"></span>" 分类</p>
+      </div>
+      
+      <!-- 表单 -->
+      <form @submit.prevent="confirmAddBookmark" class="space-y-4">
+        <!-- 网站标题 -->
+        <div>
+          <label class="block text-sm font-medium mb-2 text-shadow">网站标题</label>
+          <div class="relative">
+            <input type="text" 
+                   x-model="newBookmarkTitle"
+                   placeholder="例如: Google"
+                   class="w-full px-4 py-3 pl-12 rounded-lg glass border border-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                   autofocus>
+            <i class="fa fa-bookmark absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+          </div>
+        </div>
+        
+        <!-- 网站URL -->
+        <div>
+          <label class="block text-sm font-medium mb-2 text-shadow">网站地址</label>
+          <div class="relative">
+            <input type="text" 
+                   x-model="newBookmarkUrl"
+                   placeholder="例如: https://www.google.com"
+                   class="w-full px-4 py-3 pl-12 rounded-lg glass border border-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all">
+            <i class="fa fa-link absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">
+            <i class="fa fa-info-circle mr-1"></i>
+            可以省略 https://，会自动添加
+          </p>
+        </div>
+        
+        <!-- 错误提示 -->
+        <div x-show="bookmarkError" 
+             x-transition
+             class="p-3 rounded-lg bg-red-500/20 border border-red-500/30">
+          <p class="text-red-300 text-sm flex items-center">
+            <i class="fa fa-exclamation-circle mr-2"></i>
+            <span x-text="bookmarkError"></span>
+          </p>
+        </div>
+        
+        <!-- 按钮组 -->
+        <div class="flex gap-3 pt-2">
+          <button type="button"
+                  @click="showAddBookmarkDialog = false" 
+                  class="flex-1 px-4 py-3 rounded-lg glass hover:bg-white/10 transition-colors font-medium text-shadow">
+            <i class="fa fa-times mr-2"></i>取消
+          </button>
+          <button type="submit" 
+                  class="flex-1 px-4 py-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors font-medium text-shadow">
+            <i class="fa fa-check mr-2"></i>添加
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- 设置对话框 -->
   <div x-show="showSettings" 
        @click.self="showSettings = false"
@@ -576,6 +653,13 @@
         showPasswordDialog: false,
         showPasswordHint: false,
         protectedCategory: '',
+        
+        // 添加书签对话框
+        showAddBookmarkDialog: false,
+        newBookmarkTitle: '',
+        newBookmarkUrl: '',
+        newBookmarkCategory: '',
+        bookmarkError: '',
         
         // 数据同步（Cloudflare KV 或其他后端）
         syncEnabled: false,
@@ -875,21 +959,30 @@
         
         // 显示添加书签对话框
         showAddBookmark(categoryName) {
+          this.newBookmarkCategory = categoryName;
+          this.newBookmarkTitle = '';
+          this.newBookmarkUrl = '';
+          this.bookmarkError = '';
+          this.showAddBookmarkDialog = true;
+        },
+        
+        // 确认添加书签
+        confirmAddBookmark() {
           try {
-            const title = prompt('请输入网站标题:');
-            if (!title || title.trim() === '') {
-              this.showToast('请输入网站标题', 'error');
+            // 验证标题
+            if (!this.newBookmarkTitle || this.newBookmarkTitle.trim() === '') {
+              this.bookmarkError = '请输入网站标题';
               return;
             }
             
-            const url = prompt('请输入网站URL (例如: https://www.google.com):');
-            if (!url || url.trim() === '') {
-              this.showToast('请输入网站URL', 'error');
+            // 验证 URL
+            if (!this.newBookmarkUrl || this.newBookmarkUrl.trim() === '') {
+              this.bookmarkError = '请输入网站URL';
               return;
             }
             
             // 验证 URL 格式
-            let validUrl = url.trim();
+            let validUrl = this.newBookmarkUrl.trim();
             if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
               validUrl = 'https://' + validUrl;
             }
@@ -898,22 +991,23 @@
             try {
               new URL(validUrl);
             } catch (e) {
-              this.showToast('URL 格式不正确，请检查后重试', 'error');
+              this.bookmarkError = 'URL 格式不正确，请检查后重试';
               return;
             }
             
-            if (!this.categories[categoryName]) {
-              this.categories[categoryName] = [];
+            if (!this.categories[this.newBookmarkCategory]) {
+              this.categories[this.newBookmarkCategory] = [];
             }
             
-            this.categories[categoryName].push({
-              title: title.trim(),
+            this.categories[this.newBookmarkCategory].push({
+              title: this.newBookmarkTitle.trim(),
               url: validUrl,
               visitCount: 0,
               lastVisit: 0
             });
             
             this.saveBookmarks();
+            this.showAddBookmarkDialog = false;
             this.showToast('书签添加成功！', 'success');
             
             // 如果启用了自动同步，同步数据
@@ -922,7 +1016,7 @@
             }
           } catch (error) {
             console.error('添加书签失败:', error);
-            this.showToast('添加书签失败，请重试', 'error');
+            this.bookmarkError = '添加书签失败，请重试';
           }
         },
         
