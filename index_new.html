@@ -300,20 +300,29 @@
           <!-- 网站卡片网格 -->
           <div x-show="!isCategoryLocked(category)" 
                class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            <template x-for="link in links" :key="link.url">
-              <a :href="link.url" 
-                 target="_blank"
-                 @click="recordVisit(link)"
-                 class="card glass rounded-xl p-4 group">
-                <div class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center mb-3 group-hover:bg-white/20 transition-colors">
-                  <img :src="getIcon(link)" 
-                       @error="$el.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23818CF8%22 stroke-width=%222%22%3E%3Cpath d=%22M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71%22/%3E%3Cpath d=%22M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71%22/%3E%3C/svg%3E'"
-                       class="w-8 h-8 object-contain"
-                       alt="">
-                </div>
-                <h3 class="font-medium text-sm truncate mb-1 text-bg text-shadow" x-text="link.title"></h3>
-                <p class="text-xs text-gray-400 truncate text-bg" x-text="new URL(link.url).hostname"></p>
-              </a>
+            <template x-for="(link, index) in links" :key="link.url">
+              <div class="card glass rounded-xl p-4 group relative">
+                <!-- 删除按钮 -->
+                <button @click.stop="deleteBookmark(category, index)"
+                        class="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600 z-10">
+                  <i class="fa fa-times text-xs text-white"></i>
+                </button>
+                
+                <!-- 书签链接 -->
+                <a :href="link.url" 
+                   target="_blank"
+                   @click="recordVisit(link)"
+                   class="block">
+                  <div class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center mb-3 group-hover:bg-white/20 transition-colors">
+                    <img :src="getIcon(link)" 
+                         @error="$el.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23818CF8%22 stroke-width=%222%22%3E%3Cpath d=%22M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71%22/%3E%3Cpath d=%22M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71%22/%3E%3C/svg%3E'"
+                         class="w-8 h-8 object-contain"
+                         alt="">
+                  </div>
+                  <h3 class="font-medium text-sm truncate mb-1 text-bg text-shadow" x-text="link.title"></h3>
+                  <p class="text-xs text-gray-400 truncate text-bg" x-text="new URL(link.url).hostname"></p>
+                </a>
+              </div>
             </template>
           </div>
         </section>
@@ -839,31 +848,81 @@
           this.saveBookmarks();
         },
         
-        // 显示添加书签对话框
-        showAddBookmark(categoryName) {
-          const title = prompt('请输入网站标题:');
-          if (!title) return;
-          
-          const url = prompt('请输入网站URL:');
-          if (!url) return;
-          
-          if (!this.categories[categoryName]) {
-            this.categories[categoryName] = [];
+        // 删除书签
+        deleteBookmark(categoryName, index) {
+          if (!confirm('确定要删除这个书签吗？')) {
+            return;
           }
           
-          this.categories[categoryName].push({
-            title: title,
-            url: url,
-            visitCount: 0,
-            lastVisit: 0
-          });
-          
-          this.saveBookmarks();
-          this.showToast('书签添加成功', 'success');
-          
-          // 如果启用了自动同步，同步数据
-          if (this.syncEnabled && this.syncKey) {
-            this.syncData();
+          try {
+            if (this.categories[categoryName] && this.categories[categoryName][index]) {
+              const bookmark = this.categories[categoryName][index];
+              this.categories[categoryName].splice(index, 1);
+              
+              this.saveBookmarks();
+              this.showToast(`已删除"${bookmark.title}"`, 'success');
+              
+              // 如果启用了自动同步，同步数据
+              if (this.syncEnabled && this.syncKey) {
+                this.syncData();
+              }
+            }
+          } catch (error) {
+            console.error('删除书签失败:', error);
+            this.showToast('删除失败，请重试', 'error');
+          }
+        },
+        
+        // 显示添加书签对话框
+        showAddBookmark(categoryName) {
+          try {
+            const title = prompt('请输入网站标题:');
+            if (!title || title.trim() === '') {
+              this.showToast('请输入网站标题', 'error');
+              return;
+            }
+            
+            const url = prompt('请输入网站URL (例如: https://www.google.com):');
+            if (!url || url.trim() === '') {
+              this.showToast('请输入网站URL', 'error');
+              return;
+            }
+            
+            // 验证 URL 格式
+            let validUrl = url.trim();
+            if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
+              validUrl = 'https://' + validUrl;
+            }
+            
+            // 尝试创建 URL 对象验证格式
+            try {
+              new URL(validUrl);
+            } catch (e) {
+              this.showToast('URL 格式不正确，请检查后重试', 'error');
+              return;
+            }
+            
+            if (!this.categories[categoryName]) {
+              this.categories[categoryName] = [];
+            }
+            
+            this.categories[categoryName].push({
+              title: title.trim(),
+              url: validUrl,
+              visitCount: 0,
+              lastVisit: 0
+            });
+            
+            this.saveBookmarks();
+            this.showToast('书签添加成功！', 'success');
+            
+            // 如果启用了自动同步，同步数据
+            if (this.syncEnabled && this.syncKey) {
+              this.syncData();
+            }
+          } catch (error) {
+            console.error('添加书签失败:', error);
+            this.showToast('添加书签失败，请重试', 'error');
           }
         },
         
