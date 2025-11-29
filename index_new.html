@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人导航 - 高效上网起点</title>
+  
+  <!-- 引入外部资源 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4F46E5',
+            secondary: '#818CF8',
+            accent: '#C7D2FE',
+            dark: '#1E293B',
+            light: '#F8FAFC'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .glass {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .glass-dark {
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .gradient-bg {
+        background: linear-gradient(135deg, #4F46E5 0%, #818CF8 100%);
+      }
+    }
+  </style>
+  
+  <!-- 全局样式 -->
+  <style>
+    body {
+      background-image: url('https://picsum.photos/id/1044/1920/1080');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+    
+    /* 滚动条美化 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(79, 70, 229, 0.5);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(79, 70, 229, 0.8);
+    }
+    
+    /* 动画效果 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.5s ease forwards;
+    }
+    
+    .card {
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.3);
+    }
+  </style>
+</head>
+
+<body class="text-light min-h-screen" x-data="appData()" x-init="init()">
+  <!-- 顶部导航栏 -->
+  <header class="glass-dark fixed top-0 left-0 right-0 z-50 px-4 py-3 md:px-6">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-compass text-2xl text-secondary"></i>
+        <h1 class="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary to-accent">
+          个人导航
+        </h1>
+      </div>
+      
+      <div class="flex items-center space-x-4">
+        <button @click="showSettings = true" class="p-2 rounded-full hover:bg-white/10 transition-colors">
+          <i class="fa fa-cog text-xl"></i>
+        </button>
+        <button @click="mobileSidebarOpen = !mobileSidebarOpen" class="md:hidden p-2 rounded-full hover:bg-white/10 transition-colors">
+          <i class="fa fa-bars text-xl"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="container mx-auto pt-24 pb-16 px-4 md:px-6 flex flex-col md:flex-row gap-6">
+    <!-- 侧边栏 -->
+    <aside class="glass-dark w-full md:w-64 rounded-2xl p-5 hidden md:block animate-fade-in">
+      <div class="mb-6">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="w-12 h-12 rounded-full gradient-bg flex items-center justify-center">
+            <i class="fa fa-user text-xl"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-lg">我的导航</h3>
+            <p class="text-sm text-gray-300">高效上网助手</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 分类导航 -->
+      <nav>
+        <h3 class="font-semibold text-lg mb-4 flex items-center">
+          <i class="fa fa-th-list mr-2 text-secondary"></i>网站分类
+        </h3>
+        <ul class="space-y-1">
+          <template x-for="(links, category) in categories" :key="category">
+            <li>
+              <a :href="'#' + category" 
+                 @click.prevent="scrollToCategory(category)"
+                 class="flex items-center justify-between space-x-2 p-2 rounded-lg hover:bg-white/10 transition-colors">
+                <div class="flex items-center space-x-2">
+                  <i x-show="isCategoryLocked(category)" class="fa fa-lock text-yellow-400 text-xs"></i>
+                  <span x-text="category"></span>
+                </div>
+                <span class="text-xs bg-primary/30 px-2 py-0.5 rounded-full" x-text="links.length"></span>
+              </a>
+            </li>
+          </template>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- 移动端侧边栏 -->
+    <div x-show="mobileSidebarOpen" 
+         @click.self="mobileSidebarOpen = false"
+         class="fixed inset-0 bg-black/50 z-40 md:hidden">
+      <div class="glass-dark h-full w-3/4 max-w-xs p-5">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-xl font-bold">导航分类</h2>
+          <button @click="mobileSidebarOpen = false" class="p-2 rounded-full hover:bg-white/10">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+        <nav class="space-y-2">
+          <template x-for="(links, category) in categories" :key="category">
+            <a :href="'#' + category" 
+               @click.prevent="scrollToCategory(category); mobileSidebarOpen = false"
+               class="flex items-center justify-between p-3 rounded-lg hover:bg-white/10 transition-colors block">
+              <div class="flex items-center space-x-2">
+                <i x-show="isCategoryLocked(category)" class="fa fa-lock text-yellow-400 text-xs"></i>
+                <span x-text="category"></span>
+              </div>
+              <span class="text-xs bg-primary/30 px-2 py-0.5 rounded-full" x-text="links.length"></span>
+            </a>
+          </template>
+        </nav>
+      </div>
+    </div>
+
+    <!-- 主要内容 -->
+    <div class="flex-1 space-y-8 animate-fade-in">
+      <!-- 搜索框区域 -->
+      <section class="glass rounded-2xl p-6 md:p-8">
+        <div class="text-center mb-6">
+          <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-shadow mb-2">
+            快速访问你喜爱的网站
+          </h2>
+          <p class="text-gray-300 max-w-2xl mx-auto">
+            一站式导航，让上网更高效、更便捷
+          </p>
+        </div>
+        
+        <!-- 搜索框 -->
+        <div class="max-w-2xl mx-auto relative">
+          <form @submit.prevent="doSearch" class="relative">
+            <input 
+              type="text" 
+              x-model="searchQuery"
+              placeholder="搜索网站或内容..." 
+              class="w-full px-5 py-4 pr-12 rounded-full glass-dark border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+            >
+            <button type="submit" class="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 rounded-full bg-primary hover:bg-primary/90 transition-colors">
+              <i class="fa fa-search"></i>
+            </button>
+          </form>
+          
+          <!-- 搜索引擎切换 -->
+          <div class="flex justify-center space-x-2 mt-4">
+            <template x-for="engine in engines" :key="engine.name">
+              <button @click="currentEngine = engine"
+                      :class="currentEngine.name === engine.name ? 'bg-primary/30' : ''"
+                      class="px-3 py-1 rounded-full text-sm glass-dark hover:bg-primary/20 transition-colors">
+                <i :class="'fa ' + engine.icon + ' mr-1'"></i>
+                <span x-text="engine.name"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+      </section>
+      
+      <!-- 时间和日期 -->
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="glass rounded-2xl p-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h3 class="text-lg font-semibold mb-1">当前时间</h3>
+              <p class="text-gray-300 text-sm">精确到秒的时间显示</p>
+            </div>
+            <i class="fa fa-clock-o text-2xl text-secondary"></i>
+          </div>
+          <div class="mt-4">
+            <span x-text="timeStr" class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold"></span>
+            <p x-text="dateStr" class="text-gray-300 mt-1"></p>
+          </div>
+        </div>
+        
+        <div class="glass rounded-2xl p-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h3 class="text-lg font-semibold mb-1">快捷操作</h3>
+              <p class="text-gray-300 text-sm">常用功能</p>
+            </div>
+            <i class="fa fa-star text-2xl text-secondary"></i>
+          </div>
+          <div class="mt-4 flex gap-2">
+            <button @click="showSettings = true" class="flex-1 px-4 py-2 rounded-lg glass hover:bg-white/10 transition-colors">
+              <i class="fa fa-cog mr-2"></i>设置
+            </button>
+            <button @click="exportData" class="flex-1 px-4 py-2 rounded-lg glass hover:bg-white/10 transition-colors">
+              <i class="fa fa-download mr-2"></i>导出
+            </button>
+          </div>
+        </div>
+      </section>
+      
+      <!-- 网站导航卡片 -->
+      <template x-for="(links, category) in categories" :key="category">
+        <section :id="category" class="scroll-mt-24">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl md:text-2xl font-bold flex items-center">
+              <i :class="isCategoryLocked(category) ? 'fa fa-lock text-yellow-400' : 'fa fa-folder text-secondary'" class="mr-2"></i>
+              <span x-text="category"></span>
+              <span x-show="isCategoryLocked(category)" class="ml-2 text-sm text-yellow-400">(已锁定)</span>
+            </h2>
+            <button @click="showAddBookmark(category)" 
+                    x-show="!isCategoryLocked(category)"
+                    class="text-sm px-3 py-1 rounded-full glass-dark hover:bg-primary/20 transition-colors">
+              <i class="fa fa-plus mr-1"></i> 添加网站
+            </button>
+          </div>
+          
+          <!-- 锁定状态显示 -->
+          <div x-show="isCategoryLocked(category)" 
+               class="glass rounded-2xl p-8 text-center">
+            <i class="fa fa-lock text-6xl text-yellow-400 mb-4"></i>
+            <h3 class="text-xl font-bold mb-2">此分类已被锁定</h3>
+            <p class="text-gray-300 mb-4">需要输入密码才能查看内容</p>
+            <button @click="protectedCategory = category; showPasswordDialog = true" 
+                    class="px-6 py-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors font-medium">
+              <i class="fa fa-unlock mr-2"></i>输入密码解锁
+            </button>
+          </div>
+          
+          <!-- 网站卡片网格 -->
+          <div x-show="!isCategoryLocked(category)" 
+               class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <template x-for="link in links" :key="link.url">
+              <a :href="link.url" 
+                 target="_blank"
+                 @click="recordVisit(link)"
+                 class="card glass rounded-xl p-4 group">
+                <div class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center mb-3 group-hover:bg-white/20 transition-colors">
+                  <img :src="getIcon(link)" 
+                       @error="$el.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23818CF8%22 stroke-width=%222%22%3E%3Cpath d=%22M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71%22/%3E%3Cpath d=%22M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71%22/%3E%3C/svg%3E'"
+                       class="w-8 h-8 object-contain"
+                       alt="">
+                </div>
+                <h3 class="font-medium text-sm truncate mb-1" x-text="link.title"></h3>
+                <p class="text-xs text-gray-400 truncate" x-text="new URL(link.url).hostname"></p>
+              </a>
+            </template>
+          </div>
+        </section>
+      </template>
+    </div>
+  </main>
+
+  <!-- 密码保护对话框 -->
+  <div x-show="showPasswordDialog" 
+       @click.self="showPasswordDialog = false"
+       class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="glass-dark rounded-2xl p-6 max-w-sm w-full">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">🔒 密码保护</h2>
+        <button @click="showPasswordDialog = false" class="p-2 rounded-full hover:bg-white/10">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+      
+      <p class="text-gray-300 mb-4">此分类需要密码才能访问</p>
+      
+      <form @submit.prevent="unlock" class="space-y-4">
+        <div>
+          <input type="password" 
+                 x-model="passwordInput"
+                 placeholder="请输入密码"
+                 class="w-full px-4 py-3 rounded-lg glass border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                 autofocus>
+          <p x-show="errorMsg" 
+             x-text="errorMsg" 
+             class="text-red-400 text-sm mt-2"></p>
+        </div>
+        
+        <button type="submit" 
+                class="w-full px-4 py-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors font-medium">
+          <i class="fa fa-unlock mr-2"></i>解锁
+        </button>
+        
+        <p class="text-xs text-gray-400 text-center">默认密码: 123456</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- 设置对话框 -->
+  <div x-show="showSettings" 
+       @click.self="showSettings = false"
+       class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="glass-dark rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">设置</h2>
+        <button @click="showSettings = false" class="p-2 rounded-full hover:bg-white/10">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="space-y-6">
+        <!-- 背景设置 -->
+        <div>
+          <label class="block text-sm font-medium mb-2">背景图片 URL</label>
+          <input type="text" 
+                 x-model="tempBg"
+                 placeholder="输入图片链接"
+                 class="w-full px-4 py-2 rounded-lg glass border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/50">
+        </div>
+        
+        <!-- 遮罩浓度 -->
+        <div>
+          <label class="block text-sm font-medium mb-2">
+            背景遮罩浓度: <span x-text="Math.round(bgOpacity * 100) + '%'"></span>
+          </label>
+          <input type="range" 
+                 x-model="bgOpacity"
+                 min="0" 
+                 max="0.9" 
+                 step="0.1"
+                 class="w-full">
+        </div>
+        
+        <!-- 按钮 -->
+        <div class="flex gap-3">
+          <button @click="saveSettings" 
+                  class="flex-1 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 transition-colors">
+            保存设置
+          </button>
+          <button @click="clearBg" 
+                  class="px-4 py-2 rounded-lg glass hover:bg-white/10 transition-colors">
+            恢复默认
+          </button>
+        </div>
+        
+        <!-- 数据管理 -->
+        <div class="mt-6 pt-6 border-t border-white/10">
+          <h3 class="text-lg font-semibold mb-3">数据管理</h3>
+          <div class="space-y-2">
+            <button @click="resetAllData" 
+                    class="w-full px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 transition-colors">
+              <i class="fa fa-refresh mr-2"></i>重置所有数据（包含书签）
+            </button>
+            <p class="text-xs text-gray-400">⚠️ 此操作将清除所有自定义书签和设置，恢复到默认状态</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alpine.js 应用数据 -->
+  <script>
+    function appData() {
+      return {
+        // 搜索相关
+        searchQuery: '',
+        currentEngine: { name: 'Google', url: 'https://www.google.com/search?q=', icon: 'fa-google' },
+        engines: [
+          { name: 'Google', url: 'https://www.google.com/search?q=', icon: 'fa-google' },
+          { name: 'Bing', url: 'https://www.bing.com/search?q=', icon: 'fa-windows' },
+          { name: 'Baidu', url: 'https://www.baidu.com/s?wd=', icon: 'fa-paw' }
+        ],
+        
+        // 时间日期
+        timeStr: '',
+        dateStr: '',
+        
+        // UI 状态
+        showSettings: false,
+        mobileSidebarOpen: false,
+        
+        // 设置相关
+        customBg: localStorage.getItem('nav_custom_bg') || '',
+        tempBg: localStorage.getItem('nav_custom_bg') || '',
+        bgOpacity: parseFloat(localStorage.getItem('nav_bg_opacity')) || 0.4,
+        
+        // 密码保护
+        passwordInput: '',
+        isUnlocked: false,
+        errorMsg: '',
+        showPasswordDialog: false,
+        protectedCategory: '',
+        
+        // 书签分类数据（从 bookmarks HTML 解析）
+        categories: {},
+        protectedCategories: ['学习资源'], // 需要密码保护的分类
+        
+        // 初始化方法
+        init() {
+          this.updateTimer();
+          setInterval(() => this.updateTimer(), 1000);
+          this.loadBookmarks();
+          this.applyBackground();
+        },
+        
+        // 更新时间和日期
+        updateTimer() {
+          const now = new Date();
+          this.timeStr = now.toLocaleTimeString('zh-CN', {
+            hour12: false, 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+          });
+          this.dateStr = now.toLocaleDateString('zh-CN', {
+            year: 'numeric',
+            month: 'long', 
+            day: 'numeric', 
+            weekday: 'long'
+          });
+        },
+        
+        // 执行搜索
+        doSearch() {
+          if (!this.searchQuery.trim()) return;
+          window.open(
+            this.currentEngine.url + encodeURIComponent(this.searchQuery), 
+            '_blank'
+          );
+          this.searchQuery = '';
+        },
+        
+        // 获取网站图标
+        getIcon(link) {
+          if (link.icon && link.icon.startsWith('data:')) return link.icon;
+          try {
+            const domain = new URL(link.url).hostname;
+            return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+          } catch(e) {
+            return '';
+          }
+        },
+        
+        // 滚动到指定分类
+        scrollToCategory(categoryName) {
+          // 检查是否需要密码保护
+          if (this.protectedCategories.includes(categoryName) && !this.isUnlocked) {
+            this.protectedCategory = categoryName;
+            this.showPasswordDialog = true;
+            return;
+          }
+          
+          const element = document.getElementById(categoryName);
+          if (element) {
+            element.scrollIntoView({ 
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
+        },
+        
+        // 验证密码
+        unlock() {
+          const correctPassword = '123456'; // 默认密码
+          
+          if (this.passwordInput === correctPassword) {
+            this.isUnlocked = true;
+            this.errorMsg = '';
+            this.showPasswordDialog = false;
+            this.passwordInput = '';
+            
+            // 滚动到受保护的分类
+            if (this.protectedCategory) {
+              setTimeout(() => {
+                this.scrollToCategory(this.protectedCategory);
+              }, 100);
+            }
+            
+            this.showToast('解锁成功', 'success');
+          } else {
+            this.errorMsg = '密码错误，请重试';
+            this.passwordInput = '';
+            
+            setTimeout(() => {
+              this.errorMsg = '';
+            }, 3000);
+          }
+        },
+        
+        // 检查分类是否被锁定
+        isCategoryLocked(categoryName) {
+          return this.protectedCategories.includes(categoryName) && !this.isUnlocked;
+        },
+        
+        // 应用背景
+        applyBackground() {
+          if (this.customBg) {
+            document.body.style.backgroundImage = `url('${this.customBg}')`;
+          }
+          document.body.style.setProperty('--bg-opacity', this.bgOpacity);
+        },
+        
+        // 保存设置
+        saveSettings() {
+          if (this.tempBg !== this.customBg) {
+            this.customBg = this.tempBg;
+            localStorage.setItem('nav_custom_bg', this.tempBg);
+          }
+          localStorage.setItem('nav_bg_opacity', this.bgOpacity);
+          this.showSettings = false;
+          this.applyBackground();
+          this.showToast('设置已保存', 'success');
+        },
+        
+        // 清除背景设置
+        clearBg() {
+          this.customBg = '';
+          this.tempBg = '';
+          this.bgOpacity = 0.4;
+          localStorage.removeItem('nav_custom_bg');
+          localStorage.setItem('nav_bg_opacity', 0.4);
+          this.showSettings = false;
+          document.body.style.backgroundImage = "url('https://picsum.photos/id/1044/1920/1080')";
+          this.showToast('已恢复默认设置', 'success');
+        },
+        
+        // 重置所有数据
+        resetAllData() {
+          if (!confirm('确定要重置所有数据吗？这将清除所有自定义书签和设置！')) {
+            return;
+          }
+          
+          // 清除所有 LocalStorage 数据
+          localStorage.removeItem('nav_bookmarks');
+          localStorage.removeItem('nav_custom_bg');
+          localStorage.removeItem('nav_bg_opacity');
+          
+          // 重新加载默认数据
+          this.loadDefaultBookmarks();
+          
+          // 重置设置
+          this.customBg = '';
+          this.tempBg = '';
+          this.bgOpacity = 0.4;
+          
+          // 重置解锁状态
+          this.isUnlocked = false;
+          
+          // 关闭设置对话框
+          this.showSettings = false;
+          
+          // 恢复默认背景
+          document.body.style.backgroundImage = "url('https://picsum.photos/id/1044/1920/1080')";
+          
+          this.showToast('所有数据已重置，包含学习资源分类', 'success');
+          
+          // 刷新页面以确保所有状态正确
+          setTimeout(() => {
+            location.reload();
+          }, 1500);
+        },
+        
+        // 记录访问统计
+        recordVisit(link) {
+          if (!link.visitCount) link.visitCount = 0;
+          link.visitCount++;
+          link.lastVisit = Date.now();
+          this.saveBookmarks();
+        },
+        
+        // 显示添加书签对话框
+        showAddBookmark(categoryName) {
+          const title = prompt('请输入网站标题:');
+          if (!title) return;
+          
+          const url = prompt('请输入网站URL:');
+          if (!url) return;
+          
+          if (!this.categories[categoryName]) {
+            this.categories[categoryName] = [];
+          }
+          
+          this.categories[categoryName].push({
+            title: title,
+            url: url,
+            visitCount: 0,
+            lastVisit: 0
+          });
+          
+          this.saveBookmarks();
+          this.showToast('书签添加成功', 'success');
+        },
+        
+        // 加载书签数据
+        loadBookmarks() {
+          const saved = localStorage.getItem('nav_bookmarks');
+          if (saved) {
+            try {
+              this.categories = JSON.parse(saved);
+            } catch(e) {
+              console.error('加载书签失败:', e);
+              this.loadDefaultBookmarks();
+            }
+          } else {
+            this.loadDefaultBookmarks();
+          }
+        },
+        
+        // 加载默认书签（从 bookmarks HTML 解析）
+        loadDefaultBookmarks() {
+          this.categories = {
+            "书签栏": [
+              {title: "Gmail", url: "https://accounts.google.com/b/0/AddMailService"},
+              {title: "YouTube", url: "https://youtube.com/"},
+              {title: "地图", url: "https://maps.google.com/"},
+              {title: "免费节点", url: "https://nodefree.org/f/freenode"},
+              {title: "LIBVIO", url: "https://www.libvio.fun/"}
+            ],
+            "资源": [
+              {title: "哈希视界", url: "https://www.haxishijie.com/"},
+              {title: "AI智能助手", url: "https://9977ai.vip/"},
+              {title: "哲风壁纸", url: "https://haowallpaper.com/wallpaperForum"}
+            ],
+            "机场": [
+              {title: "一分机场", url: "https://xn--4gqx1hgtfdmt.com/#/register?code=20rNmKrh"},
+              {title: "追云加速", url: "https://top2.chasing.sbs/#/login"},
+              {title: "赔钱机场", url: "https://xn--mes358aby2apfg.com/#/plan/5"}
+            ],
+            "导航": [
+              {title: "老王导航", url: "https://nav.eooce.com/"},
+              {title: "9G网址导航", url: "https://www.9ghao.com/"},
+              {title: "高老四导航", url: "https://www.oom.cool/"}
+            ],
+            "工具": [
+              {title: "QingIcon图标", url: "https://qingicon.com/"},
+              {title: "临时邮箱", url: "https://tempmail.plus/zh/#!"},
+              {title: "美国虚拟身份", url: "https://fauxid.com/"},
+              {title: "免费域名", url: "https://dash.domain.digitalplat.org/panel/main"},
+              {title: "cobalt视频下载", url: "https://cobalt.tools/"},
+              {title: "B站视频下载", url: "https://zhouql.vip/bilibili/"},
+              {title: "Google AI Studio", url: "https://aistudio.google.com/apps"}
+            ],
+            "学习资源": [
+              {title: "SpankBang", url: "https://spankbang.com/"},
+              {title: "Redtube", url: "https://www.hd-easyporn.com/category/redtube-porn/"},
+              {title: "xHamster", url: "https://xhamster.com/tags/redtube"},
+              {title: "BongaCams", url: "https://www.xvideos.com/channels/bongacams"},
+              {title: "Chaturbate", url: "https://chaturbate.com/"},
+              {title: "LiveJasmin", url: "https://www.livejasmin.com/zh/%E5%A5%B3%E5%AD%A9"},
+              {title: "XNXX", url: "https://www.xnxx.com/"},
+              {title: "Pornhub", url: "https://www.pornhub.com/"},
+              {title: "XVIDEOS", url: "https://www.xvideos.com/"},
+              {title: "YouPorn", url: "https://www.you-porn.com/"}
+            ]
+          };
+          this.saveBookmarks();
+        },
+        
+        // 保存书签数据
+        saveBookmarks() {
+          try {
+            localStorage.setItem('nav_bookmarks', JSON.stringify(this.categories));
+          } catch(e) {
+            console.error('保存书签失败:', e);
+            this.showToast('保存失败：存储空间不足', 'error');
+          }
+        },
+        
+        // 导出数据
+        exportData() {
+          const data = {
+            bookmarks: this.categories,
+            settings: {
+              customBg: this.customBg,
+              bgOpacity: this.bgOpacity
+            },
+            exportDate: new Date().toISOString()
+          };
+          
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `bookmarks_${new Date().toISOString().split('T')[0]}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          
+          this.showToast('数据导出成功', 'success');
+        },
+        
+        // 显示提示消息
+        showToast(message, type = 'info') {
+          const toast = document.createElement('div');
+          toast.className = `fixed top-6 right-6 z-[200] px-6 py-4 rounded-xl shadow-2xl backdrop-blur-md transform transition-all duration-300`;
+          
+          const styles = {
+            success: 'bg-green-500/90 text-white border border-green-400/50',
+            error: 'bg-red-500/90 text-white border border-red-400/50',
+            info: 'bg-blue-500/90 text-white border border-blue-400/50'
+          };
+          
+          toast.className += ' ' + (styles[type] || styles.info);
+          toast.innerHTML = `
+            <div class="flex items-center gap-3">
+              <i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} text-xl"></i>
+              <span class="font-medium">${message}</span>
+            </div>
+          `;
+          
+          document.body.appendChild(toast);
+          
+          setTimeout(() => {
+            toast.style.transform = 'translateX(400px)';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+          }, 3000);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
